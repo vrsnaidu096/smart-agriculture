@@ -20,6 +20,7 @@ export default function MapScreen({ navigation }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [is3D, setIs3D] = useState(false);
 
   const load = useCallback(async () => {
     const farmId = await getActiveFarmId();
@@ -37,9 +38,15 @@ export default function MapScreen({ navigation }) {
         title={t('map_title')}
         onBack={() => navigation.navigate('Home')}
         right={
-          <TouchableOpacity onPress={() => navigation.navigate('Boundary')}>
-            <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={() => setIs3D(!is3D)} style={styles.headerButton}>
+              <Ionicons name={is3D ? "map" : "map-outline"} size={22} color={is3D ? colors.accent : colors.primary} />
+              <Text style={[styles.headerText, is3D && { color: colors.accent }]}>3D</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Boundary')} style={styles.headerButton}>
+              <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
         }
       />
 
@@ -58,11 +65,11 @@ export default function MapScreen({ navigation }) {
         >
           <FarmMapView
             boundary={data?.boundary}
-            markers={data?.markers ?? []}
-            zones={data?.zones ?? []}
-          />
-
-          <Card>
+            markers={data?.history?.map(scan => ({ latitude: scan.latitude, longitude: scan.longitude, status: scan.risk.riskLevel }))}
+            zones={data?.zones}
+            height={400}
+            is3D={is3D}
+          /><Card>
             <MapLegend />
           </Card>
 
@@ -111,7 +118,10 @@ export default function MapScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
+  content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: 100 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  headerButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  headerText: { ...typography.body, color: colors.primary, fontWeight: '700' },
   sectionTitle: { ...typography.subheading, marginBottom: spacing.md },
   zoneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   zoneDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },

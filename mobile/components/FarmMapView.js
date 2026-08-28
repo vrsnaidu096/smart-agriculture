@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import MapView, { Polygon, Circle, Marker, UrlTile } from 'react-native-maps';
 import { colors, spacing, radius, typography } from '../theme';
@@ -12,8 +12,19 @@ const MARKER_COLOUR = {
   UNKNOWN: colors.textMuted
 };
 
-export default function FarmMapView({ boundary, markers = [], zones = [], height = 320, onPress, onLongPress, onPanDrag, scrollEnabled = true }) {
+export default function FarmMapView({ boundary, markers = [], zones = [], height = 320, onPress, onLongPress, onPanDrag, scrollEnabled = true, is3D = false }) {
   const { t } = useTranslation();
+  const mapRef = useRef(null);
+
+  useEffect(() => {
+    if (mapRef.current) {
+      if (is3D) {
+        mapRef.current.animateCamera({ pitch: 65, zoom: 18.5 }, { duration: 1000 });
+      } else {
+        mapRef.current.animateCamera({ pitch: 0, zoom: 17 }, { duration: 1000 });
+      }
+    }
+  }, [is3D]);
 
   // Extract polygon points in { latitude, longitude } format for react-native-maps
   const boundaryPoints = useMemo(() => {
@@ -57,10 +68,10 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
        };
     }
 
-    const minLat = Math.min(...allLats);
     const maxLat = Math.max(...allLats);
     const minLon = Math.min(...allLons);
     const maxLon = Math.max(...allLons);
+    const minLat = Math.min(...allLats);
 
     return {
       latitude: (minLat + maxLat) / 2,
@@ -73,6 +84,7 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
   return (
     <View style={[styles.wrap, { height }]}>
       <MapView
+        ref={mapRef}
         style={{ width: '100%', height: '100%' }}
         initialRegion={initialRegion}
         mapType="satellite"
@@ -82,6 +94,8 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
         scrollEnabled={scrollEnabled}
         showsUserLocation={true}
         showsMyLocationButton={true}
+        pitchEnabled={true}
+        showsBuildings={true}
       >
         {boundaryPoints && (
           <Polygon
