@@ -12,7 +12,7 @@ const MARKER_COLOUR = {
   UNKNOWN: colors.textMuted
 };
 
-export default function FarmMapView({ boundary, markers = [], zones = [], height = 320 }) {
+export default function FarmMapView({ boundary, markers = [], zones = [], height = 320, onPress, onLongPress }) {
   const { t } = useTranslation();
 
   // Extract polygon points in { latitude, longitude } format for react-native-maps
@@ -47,7 +47,15 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
       }
     });
 
-    if (allLats.length === 0) return null;
+    if (allLats.length === 0) {
+       // Fallback to a default region if completely empty so they can at least see a map to start drawing
+       return {
+          latitude: 16.5062,
+          longitude: 80.6480,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+       };
+    }
 
     const minLat = Math.min(...allLats);
     const maxLat = Math.max(...allLats);
@@ -62,27 +70,17 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
     };
   }, [boundaryPoints, markers, zones]);
 
-  if (!initialRegion) {
-    return (
-      <View style={[styles.placeholder, { height }]}>
-        <Text style={styles.placeholderText}>{t('no_boundary')}</Text>
-        <Text style={styles.placeholderDetail}>{t('no_boundary_detail')}</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.wrap, { height }]}>
       <MapView
         style={{ width: '100%', height: '100%' }}
         initialRegion={initialRegion}
-        mapType="none" // Bypasses Google/Apple base maps
+        mapType="satellite"
+        onPress={onPress}
+        onLongPress={onLongPress}
+        showsUserLocation={true}
+        showsMyLocationButton={true}
       >
-        <UrlTile
-          urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maximumZ={19}
-        />
-
         {boundaryPoints && (
           <Polygon
             coordinates={boundaryPoints}
