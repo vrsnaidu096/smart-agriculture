@@ -18,6 +18,8 @@ import SettingsScreen from './app/settings';
 import BoundaryScreen from './app/boundary';
 import LoginScreen from './app/login';
 
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 const Stack = createNativeStackNavigator();
 
 /**
@@ -27,8 +29,9 @@ const Stack = createNativeStackNavigator();
  */
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <I18nProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <I18nProvider>
         <StatusBar style="dark" />
         <NavigationContainer>
           <Stack.Navigator

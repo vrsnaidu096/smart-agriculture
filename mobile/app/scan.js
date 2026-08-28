@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 
 import { colors, spacing, radius, typography } from '../theme';
 import { useTranslation } from '../i18n';
@@ -62,6 +63,19 @@ export default function ScanScreen({ navigation }) {
     }
   };
 
+  const onPinchEvent = (event) => {
+    const scale = event.nativeEvent.scale;
+    const velocity = event.nativeEvent.velocity / 20;
+    
+    let newZoom = zoom;
+    if (scale > 1) {
+      newZoom = zoom + (scale - 1) * 0.05;
+    } else {
+      newZoom = zoom - (1 - scale) * 0.05;
+    }
+    setZoom(Math.max(0, Math.min(1, newZoom)));
+  };
+
   if (!permission) {
     return (
       <View style={styles.centre}>
@@ -87,15 +101,19 @@ export default function ScanScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <CameraView
-        style={StyleSheet.absoluteFill}
-        facing="back"
-        ref={cameraRef}
-        zoom={zoom}
-        onCameraReady={() => setReady(true)}
-      />
+      <PinchGestureHandler onGestureEvent={onPinchEvent}>
+        <View style={StyleSheet.absoluteFill}>
+          <CameraView
+            style={StyleSheet.absoluteFill}
+            facing="back"
+            ref={cameraRef}
+            zoom={zoom}
+            onCameraReady={() => setReady(true)}
+          />
+        </View>
+      </PinchGestureHandler>
 
-      <SafeAreaView style={styles.overlay} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.overlay} edges={['top', 'bottom']} pointerEvents="box-none">
         <View style={styles.topBar}>
           <TouchableOpacity style={styles.roundButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={22} color={colors.white} />
