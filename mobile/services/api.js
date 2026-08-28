@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Use the Pinggy tunnel URL to bypass strict Wi-Fi firewalls
-const API_BASE_URL = 'https://michs-2401-4900-60f2-4340-8122-135c-39df-2c13.free.pinggy.net/api'; 
+const API_BASE_URL = 'https://udipd-2401-4900-97ca-94f9-8c3d-b77b-dcb8-3c5e.free.pinggy.net/api'; 
 
 const api = axios.create({
   baseURL: API_BASE_URL,
