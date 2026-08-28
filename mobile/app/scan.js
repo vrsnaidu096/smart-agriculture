@@ -17,6 +17,7 @@ export default function ScanScreen({ navigation }) {
   const [photos, setPhotos] = useState([]);
   const [capturing, setCapturing] = useState(false);
   const [qualityError, setQualityError] = useState(null);
+  const [zoom, setZoom] = useState(0);
   const cameraRef = useRef(null);
 
   const takePicture = async () => {
@@ -90,6 +91,7 @@ export default function ScanScreen({ navigation }) {
         style={StyleSheet.absoluteFill}
         facing="back"
         ref={cameraRef}
+        zoom={zoom}
         onCameraReady={() => setReady(true)}
       />
 
@@ -121,6 +123,16 @@ export default function ScanScreen({ navigation }) {
         </View>
 
         <View style={styles.bottomBar}>
+          <View style={styles.zoomRow}>
+            <TouchableOpacity onPress={() => setZoom(Math.max(0, zoom - 0.1))} style={styles.zoomBtn}>
+              <Ionicons name="remove" size={24} color={colors.white} />
+            </TouchableOpacity>
+            <Text style={styles.zoomText}>Zoom: {(zoom * 10).toFixed(0)}x</Text>
+            <TouchableOpacity onPress={() => setZoom(Math.min(1, zoom + 0.1))} style={styles.zoomBtn}>
+              <Ionicons name="add" size={24} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.thumbRow}>
             {photos.map((photo, index) => (
               <Image key={index} source={{ uri: photo.uri }} style={styles.thumb} />
@@ -227,6 +239,28 @@ const styles = StyleSheet.create({
     overflow: 'hidden'
   },
   bottomBar: { paddingBottom: spacing.lg, gap: spacing.lg },
+  zoomRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: spacing.lg,
+    marginBottom: spacing.sm 
+  },
+  zoomBtn: { 
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    backgroundColor: 'rgba(0,0,0,0.45)', 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  zoomText: { 
+    color: colors.white, 
+    fontSize: 14, 
+    fontWeight: '600', 
+    width: 80, 
+    textAlign: 'center' 
+  },
   thumbRow: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, minHeight: 52 },
   thumb: { width: 52, height: 52, borderRadius: radius.sm, borderWidth: 2, borderColor: colors.white },
   controlRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl },
