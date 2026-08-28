@@ -1,0 +1,18 @@
+[
+  {
+    "id": "wheat_rust",
+    "name": "Wheat Rust",
+    "crop": "Wheat",
+    "symptoms": ["Yellow, orange, or reddish-brown pustules on leaves and stems", "Premature leaf drying"],
+    "riskConditions": {
+      "humidity": ">90%",
+      "temperature": "15-22°C"
+    },
+    "precautions": [
+      "Plant rust-resistant varieties",
+      "Apply fungicides early if conditions are favorable for disease",
+      "Eradicate volunteer wheat and alternative hosts"
+    ],
+    "monitoring": "Scout fields weekly, especially after extended periods of dew or rain."
+  }
+]

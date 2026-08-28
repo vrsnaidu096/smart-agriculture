@@ -10,7 +10,8 @@ class SoilMapper {
       organicCarbon: rawResult.carbon_index ?? null,
       soilType: rawResult.type || 'Unknown',
       bulkDensity: rawResult.density ?? null,
-      texture: rawResult.texture ?? null
+      texture: rawResult.texture ?? null,
+      moisture: rawResult.soil_moisture ?? null
     };
   }
 }

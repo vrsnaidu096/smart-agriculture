@@ -1,0 +1,13 @@
+{
+  "spraying": [
+    "Do not spray during high winds to avoid chemical drift.",
+    "Spray during early morning or late afternoon to minimize evaporation.",
+    "Always wear protective equipment when mixing and applying chemicals."
+  ],
+  "re_entry": "Observe standard re-entry intervals (usually 12-48 hours) after spraying before re-entering the field without protective gear.",
+  "hygiene": [
+    "Clean farm tools and machinery after working in an infected field.",
+    "Remove and destroy heavily diseased plants to prevent further spread.",
+    "Practice regular weed control as weeds can harbor pests and diseases."
+  ]
+}

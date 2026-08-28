@@ -16,14 +16,25 @@ export default function ScanScreen({ navigation }) {
   const [ready, setReady] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [capturing, setCapturing] = useState(false);
+  const [qualityError, setQualityError] = useState(null);
   const cameraRef = useRef(null);
 
   const takePicture = async () => {
     if (!cameraRef.current || !ready || capturing || photos.length >= MAX_PHOTOS) return;
     setCapturing(true);
+    setQualityError(null);
     try {
       // quality 0.7 keeps the base64 payload small enough for the analyze call.
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, base64: true });
+      
+      const { checkImageQuality } = require('../services/imageQuality');
+      const quality = checkImageQuality(photo.base64);
+      
+      if (!quality.isValid) {
+        setQualityError(t(quality.reason));
+        return;
+      }
+      
       setPhotos((current) => [...current, photo]);
     } catch (error) {
       console.warn('[scan] capture failed:', error.message);
@@ -94,6 +105,12 @@ export default function ScanScreen({ navigation }) {
         </View>
 
         <View style={styles.frameArea}>
+          {qualityError && (
+            <View style={styles.errorBox}>
+              <Ionicons name="warning" size={20} color={colors.white} />
+              <Text style={styles.errorText}>{qualityError}</Text>
+            </View>
+          )}
           <View style={styles.frame}>
             <View style={[styles.corner, styles.cornerTL]} />
             <View style={[styles.corner, styles.cornerTR]} />
@@ -182,6 +199,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden'
   },
   frameArea: { alignItems: 'center', gap: spacing.lg },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.error,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    gap: spacing.sm,
+    marginTop: spacing.md
+  },
+  errorText: { color: colors.white, fontSize: 14, fontWeight: '600' },
   frame: { width: 250, height: 250 },
   corner: { position: 'absolute', width: 34, height: 34, borderColor: colors.white, borderWidth: 3 },
   cornerTL: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: 10 },

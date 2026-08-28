@@ -104,5 +104,7 @@
   "risk_guide": "Risk Level Guide",
   "risk_guide_low": "Conditions are normal. Keep monitoring.",
   "risk_guide_medium": "Monitor closely and take preventive actions.",
-  "risk_guide_high": "Immediate action recommended to protect your crop."
+  "risk_guide_high": "Immediate action recommended to protect your crop.",
+  "capture_too_blurry": "Photo is too blurry. Please hold steady and try again.",
+  "capture_too_dark": "Photo is too dark. Please make sure there is enough light."
 }

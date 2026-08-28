@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 /**
- * Soil Intelligence Integration - ISRIC SoilGrids (public, no key required).
+ * Soil Intelligence Integration - ISRIC SoilGrids and Open-Meteo.
  *
  * No mock fallback, for the same reason as weather: invented soil chemistry
  * would feed the irrigation advice as if it were measured.
@@ -9,9 +9,9 @@ const axios = require('axios');
 
 const getSoilData = async (lat, lon) => {
   try {
-    console.log(`[Integration] Fetching soil data for ${lat}, ${lon} from ISRIC SoilGrids...`);
+    console.log(`[Integration] Fetching soil data for ${lat}, ${lon}...`);
 
-    const response = await axios.get(
+    const soilGridsReq = axios.get(
       'https://rest.isric.org/soilgrids/v2.0/properties/query',
       {
         params: {
@@ -32,7 +32,23 @@ const getSoilData = async (lat, lon) => {
       }
     );
 
-    const layers = response.data?.properties?.layers;
+    const meteoReq = axios.get('https://api.open-meteo.com/v1/forecast', {
+      params: { 
+        latitude: lat, 
+        longitude: lon, 
+        current: 'soil_moisture_0_to_7cm',
+        timezone: 'auto' 
+      },
+      timeout: 8000
+    });
+
+    const [soilGridsRes, meteoRes] = await Promise.allSettled([soilGridsReq, meteoReq]);
+
+    if (soilGridsRes.status === 'rejected') {
+      throw new Error(`SoilGrids API failed: ${soilGridsRes.reason.message}`);
+    }
+
+    const layers = soilGridsRes.value.data?.properties?.layers;
     if (!Array.isArray(layers) || layers.length === 0) {
       throw new Error('Invalid response from SoilGrids');
     }
@@ -44,15 +60,20 @@ const getSoilData = async (lat, lon) => {
       return typeof mean === 'number' ? mean / divisor : null;
     };
 
+    const soilMoisture = meteoRes.status === 'fulfilled' 
+      ? meteoRes.value.data?.current?.soil_moisture_0_to_7cm 
+      : null;
+
     return {
       ph_value: extract('phh2o', 10),      // pH*10  -> pH
       carbon_index: extract('soc', 10),    // dg/kg  -> g/kg
       density: extract('bdod', 100),       // cg/cm3 -> kg/dm3
       type: 'Geospatial Estimated',
-      texture: null
+      texture: null,
+      soil_moisture: soilMoisture
     };
   } catch (error) {
-    console.error('[Integration Error] SoilGrids API failed:', error.message);
+    console.error('[Integration Error] Soil data fetch failed:', error.message);
     return null;
   }
 };

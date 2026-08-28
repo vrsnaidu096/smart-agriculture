@@ -1,0 +1,33 @@
+{
+  "latitude": 52.52,
+  "longitude": 13.41,
+  "generationtime_ms": 0.05,
+  "utc_offset_seconds": 0,
+  "timezone": "GMT",
+  "timezone_abbreviation": "GMT",
+  "elevation": 38.0,
+  "current_units": {
+    "temperature_2m": "°C",
+    "relative_humidity_2m": "%",
+    "precipitation": "mm",
+    "wind_speed_10m": "km/h",
+    "weather_code": "wmo code",
+    "soil_moisture_0_to_7cm": "m³/m³"
+  },
+  "current": {
+    "time": "2023-01-01T00:00",
+    "temperature_2m": 13.5,
+    "relative_humidity_2m": 58,
+    "precipitation": 0.0,
+    "wind_speed_10m": 12.3,
+    "weather_code": 3,
+    "soil_moisture_0_to_7cm": 0.15
+  },
+  "daily_units": {
+    "precipitation_probability_max": "%"
+  },
+  "daily": {
+    "time": ["2023-01-01"],
+    "precipitation_probability_max": [85]
+  }
+}

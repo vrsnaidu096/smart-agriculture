@@ -8,6 +8,7 @@ const AlertsService = require('../modules/alerts/alerts.service');
 const DecisionEngine = require('../intelligence/decisionEngine');
 const SafetyValidator = require('../intelligence/safetyValidator');
 const RiskEngine = require('../intelligence/riskEngine');
+const RecommendationEngine = require('../intelligence/recommendationEngine');
 
 class FarmOrchestrator {
   /**
@@ -120,6 +121,10 @@ class FarmOrchestrator {
     const topRecommendation =
       safeRecommendations.length > 0 ? safeRecommendations[0].message : risk.alert;
 
+    // 6.5 Recommendation Engine (Phase 11.5)
+    // Sit AFTER SafetyValidator: enrich with symptoms, precautions, and monitoring
+    const enrichedData = RecommendationEngine.enrich(safeRecommendations, farmContext);
+
     // 7. Save History (Phase 12)
     const scanId = await HistoryService.saveScan({
       farmId,
@@ -153,6 +158,7 @@ class FarmOrchestrator {
     }
 
     // 8. Return to Mobile App
+    // Adding the enriched content to the response WITHOUT changing existing field names
     return {
       scanId,
       disease: diseaseResult,
@@ -161,7 +167,10 @@ class FarmOrchestrator {
       risk,
       status: diseaseResult.status,
       dataSource: predictionSource,
-      recommendation: topRecommendation
+      recommendation: topRecommendation,
+      ...(enrichedData.symptoms && { symptoms: enrichedData.symptoms }),
+      ...(enrichedData.precautions && { precautions: enrichedData.precautions }),
+      ...(enrichedData.monitoring && { monitoring: enrichedData.monitoring })
     };
   }
 }
