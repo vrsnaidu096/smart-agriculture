@@ -1,0 +1,34 @@
+[
+  {
+    "id": "rice_blast",
+    "name": "Rice Blast",
+    "crop": "Rice",
+    "symptoms": ["Diamond-shaped white to gray lesions on leaves", "Brown borders on lesions", "Stunted growth"],
+    "riskConditions": {
+      "humidity": ">85%",
+      "temperature": "25-28°C"
+    },
+    "precautions": [
+      "Avoid excessive nitrogen fertilizer",
+      "Ensure proper field drainage",
+      "Remove infected debris from the field"
+    ],
+    "monitoring": "Monitor fields every 3-5 days during high humidity periods."
+  },
+  {
+    "id": "wheat_rust",
+    "name": "Wheat Rust",
+    "crop": "Wheat",
+    "symptoms": ["Yellow, orange, or reddish-brown pustules on leaves and stems", "Premature leaf drying"],
+    "riskConditions": {
+      "humidity": ">90%",
+      "temperature": "15-22°C"
+    },
+    "precautions": [
+      "Plant rust-resistant varieties",
+      "Apply fungicides early if conditions are favorable for disease",
+      "Eradicate volunteer wheat and alternative hosts"
+    ],
+    "monitoring": "Scout fields weekly, especially after extended periods of dew or rain."
+  }
+]

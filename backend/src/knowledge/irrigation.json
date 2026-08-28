@@ -1,0 +1,22 @@
+{
+  "rules": [
+    {
+      "id": "irrigation_001",
+      "condition": "soil.moisture < 20% AND weather.rainExpected == false",
+      "action": "Recommend immediate irrigation",
+      "priority": "HIGH"
+    },
+    {
+      "id": "irrigation_002",
+      "condition": "soil.moisture > 60%",
+      "action": "Halt irrigation to prevent waterlogging",
+      "priority": "HIGH"
+    },
+    {
+      "id": "irrigation_003",
+      "condition": "weather.rainExpected == true AND weather.rainfallProbability > 70",
+      "action": "Delay planned irrigation due to expected rain",
+      "priority": "MEDIUM"
+    }
+  ]
+}

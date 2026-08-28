@@ -1,0 +1,18 @@
+[
+  {
+    "id": "sugarcane_red_rot",
+    "name": "Red Rot",
+    "crop": "Sugarcane",
+    "symptoms": ["Yellowing of leaves from top to bottom", "Reddening of internal tissues", "Alcoholic smell from split canes"],
+    "riskConditions": {
+      "humidity": ">80%",
+      "temperature": "29-32°C"
+    },
+    "precautions": [
+      "Use disease-free seed sets",
+      "Avoid planting in waterlogged areas",
+      "Practice crop rotation"
+    ],
+    "monitoring": "Regularly inspect fields for early leaf yellowing during monsoon season."
+  }
+]

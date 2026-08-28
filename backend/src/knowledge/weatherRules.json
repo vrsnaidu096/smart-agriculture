@@ -1,0 +1,22 @@
+{
+  "rules": [
+    {
+      "id": "weather_001",
+      "condition": "weather.windSpeed > 20",
+      "hazard": "Strong Winds",
+      "advice": "Delay any chemical spraying as drift is highly likely."
+    },
+    {
+      "id": "weather_002",
+      "condition": "weather.humidity > 85 AND weather.temperature > 25",
+      "hazard": "High Fungal Risk",
+      "advice": "Conditions are highly favorable for fungal diseases. Increase scouting."
+    },
+    {
+      "id": "weather_003",
+      "condition": "weather.rainExpected == true",
+      "hazard": "Rainfall",
+      "advice": "Do not apply foliar treatments; they may be washed off."
+    }
+  ]
+}
