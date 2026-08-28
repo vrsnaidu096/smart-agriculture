@@ -12,7 +12,7 @@ const MARKER_COLOUR = {
   UNKNOWN: colors.textMuted
 };
 
-export default function FarmMapView({ boundary, markers = [], zones = [], height = 320, onPress, onLongPress }) {
+export default function FarmMapView({ boundary, markers = [], zones = [], height = 320, onPress, onLongPress, onPanDrag, scrollEnabled = true }) {
   const { t } = useTranslation();
 
   // Extract polygon points in { latitude, longitude } format for react-native-maps
@@ -78,6 +78,8 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
         mapType="satellite"
         onPress={onPress}
         onLongPress={onLongPress}
+        onPanDrag={onPanDrag}
+        scrollEnabled={scrollEnabled}
         showsUserLocation={true}
         showsMyLocationButton={true}
       >

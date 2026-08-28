@@ -120,17 +120,28 @@ export default function BoundaryScreen({ navigation }) {
       <ScreenHeader title={t('map_farm')} onBack={() => { pause(); navigation.goBack(); }} />
 
       <View style={styles.content}>
-        <Text style={styles.hint}>{t('map_farm_hint') || 'Press and hold on the map to drop pins and outline your farm boundary.'}</Text>
+        <Text style={styles.hint}>{t('map_farm_hint') || 'Tap "Start Mapping", then drag your finger to sketch your farm.'}</Text>
 
         <FarmMapView 
           boundary={previewBoundary} 
           markers={[]} 
           zones={[]} 
           height={280} 
+          scrollEnabled={!tracking}
           onLongPress={(e) => {
             if (!tracking) return;
             const pt = e.nativeEvent.coordinate;
             setPoints(current => [...current, { latitude: pt.latitude, longitude: pt.longitude }]);
+          }}
+          onPanDrag={(e) => {
+            if (!tracking) return;
+            const pt = { latitude: e.nativeEvent.coordinate.latitude, longitude: e.nativeEvent.coordinate.longitude };
+            setPoints(current => {
+               if (current.length === 0) return [pt];
+               const last = current[current.length - 1];
+               if (distance(last, pt) < MIN_SPACING_METRES) return current;
+               return [...current, pt];
+            });
           }}
         />
 
