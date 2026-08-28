@@ -5,13 +5,11 @@ import Constants from 'expo-constants';
  * Backend client.
  *
  * The base URL comes from app.json -> expo.extra.apiBaseUrl so it is not
- * hardcoded in source. Override per-machine with EXPO_PUBLIC_API_URL.
  */
 
-const FALLBACK_URL = 'https://zjsdf-2401-4900-97ca-94f9-8c3d-b77b-dcb8-3c5e.free.pinggy.net/api';
+const FALLBACK_URL = 'https://viakt-2401-4900-97ca-94f9-8c3d-b77b-dcb8-3c5e.free.pinggy.net/api';
 
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ||
   Constants.expoConfig?.extra?.apiBaseUrl ||
   FALLBACK_URL;
 

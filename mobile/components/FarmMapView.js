@@ -1,17 +1,8 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Svg, { Polygon, Circle, G } from 'react-native-svg';
+import MapView, { Polygon, Circle, Marker, UrlTile } from 'react-native-maps';
 import { colors, spacing, radius, typography } from '../theme';
 import { useTranslation } from '../i18n';
-
-/**
- * LingBot-Map 2D renderer.
- *
- * Draws the farm boundary, risk zones and scan markers in a plain SVG viewport.
- * Deliberately not a tile map: the MVP needs relative geometry, not satellite
- * imagery, and this keeps the app free of a heavy native map dependency.
- * Swapping in react-native-maps later only touches this file.
- */
 
 const MARKER_COLOUR = {
   HIGH_RISK: colors.zone.HIGH_RISK,
@@ -21,59 +12,57 @@ const MARKER_COLOUR = {
   UNKNOWN: colors.textMuted
 };
 
-const PAD = 0.12;
-
 export default function FarmMapView({ boundary, markers = [], zones = [], height = 320 }) {
   const { t } = useTranslation();
 
-  const geometry = useMemo(() => {
-    const points = [];
-
+  // Extract polygon points in { latitude, longitude } format for react-native-maps
+  const boundaryPoints = useMemo(() => {
     if (boundary?.coordinates?.[0]) {
-      // GeoJSON stores [longitude, latitude].
-      for (const [lon, lat] of boundary.coordinates[0]) points.push({ latitude: lat, longitude: lon });
+      return boundary.coordinates[0].map(([lon, lat]) => ({
+        latitude: lat,
+        longitude: lon
+      }));
     }
-    for (const m of markers) points.push({ latitude: m.latitude, longitude: m.longitude });
-    for (const z of zones) if (z.centre) points.push(z.centre);
+    return null;
+  }, [boundary]);
 
-    if (points.length === 0) return null;
-
-    const lats = points.map((p) => p.latitude);
-    const lons = points.map((p) => p.longitude);
-    const midLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-    const lonScale = Math.cos((midLat * Math.PI) / 180) || 1;
-
-    // Work in a flat plane first: east-west compressed by latitude.
-    const flat = points.map((p) => ({ x: p.longitude * lonScale, y: -p.latitude }));
-    let minX = Math.min(...flat.map((p) => p.x));
-    let maxX = Math.max(...flat.map((p) => p.x));
-    let minY = Math.min(...flat.map((p) => p.y));
-    let maxY = Math.max(...flat.map((p) => p.y));
-
-    // A single scan has zero extent; give it a small window so it is visible.
-    const spanX = maxX - minX || 0.0008;
-    const spanY = maxY - minY || 0.0008;
-    const padX = spanX * PAD;
-    const padY = spanY * PAD;
-    minX -= padX; maxX += padX; minY -= padY; maxY += padY;
-
-    const width = 320;
-    const scale = Math.min(width / (maxX - minX), height / (maxY - minY));
-    const offsetX = (width - (maxX - minX) * scale) / 2;
-    const offsetY = (height - (maxY - minY) * scale) / 2;
-
-    const project = (lat, lon) => ({
-      x: (lon * lonScale - minX) * scale + offsetX,
-      y: (-lat - minY) * scale + offsetY
+  // Determine the bounding box to automatically center the map
+  const initialRegion = useMemo(() => {
+    const allLats = [];
+    const allLons = [];
+    if (boundaryPoints) {
+      boundaryPoints.forEach(p => {
+        allLats.push(p.latitude);
+        allLons.push(p.longitude);
+      });
+    }
+    markers.forEach(m => {
+      allLats.push(m.latitude);
+      allLons.push(m.longitude);
+    });
+    zones.forEach(z => {
+      if (z.centre) {
+        allLats.push(z.centre.latitude);
+        allLons.push(z.centre.longitude);
+      }
     });
 
-    // Degrees of latitude to pixels, for drawing zone radii to scale.
-    const metresToPixels = (metres) => (metres / 111000) * scale;
+    if (allLats.length === 0) return null;
 
-    return { project, metresToPixels, width, height };
-  }, [boundary, markers, zones, height]);
+    const minLat = Math.min(...allLats);
+    const maxLat = Math.max(...allLats);
+    const minLon = Math.min(...allLons);
+    const maxLon = Math.max(...allLons);
 
-  if (!geometry) {
+    return {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLon + maxLon) / 2,
+      latitudeDelta: (maxLat - minLat) * 1.5 || 0.005,
+      longitudeDelta: (maxLon - minLon) * 1.5 || 0.005,
+    };
+  }, [boundaryPoints, markers, zones]);
+
+  if (!initialRegion) {
     return (
       <View style={[styles.placeholder, { height }]}>
         <Text style={styles.placeholderText}>{t('no_boundary')}</Text>
@@ -82,59 +71,54 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
     );
   }
 
-  const { project, metresToPixels, width } = geometry;
-
-  const boundaryPoints = boundary?.coordinates?.[0]
-    ? boundary.coordinates[0]
-        .map(([lon, lat]) => {
-          const p = project(lat, lon);
-          return `${p.x},${p.y}`;
-        })
-        .join(' ')
-    : null;
-
   return (
     <View style={[styles.wrap, { height }]}>
-      <Svg width={width} height={height}>
-        {boundaryPoints ? (
+      <MapView
+        style={{ width: '100%', height: '100%' }}
+        initialRegion={initialRegion}
+        mapType="none" // Bypasses Google/Apple base maps
+      >
+        <UrlTile
+          urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maximumZ={19}
+        />
+
+        {boundaryPoints && (
           <Polygon
-            points={boundaryPoints}
-            fill={colors.primary}
-            fillOpacity={0.08}
-            stroke={colors.primary}
+            coordinates={boundaryPoints}
+            fillColor="rgba(27, 122, 62, 0.2)"
+            strokeColor={colors.primary}
             strokeWidth={2}
-            strokeDasharray="6 4"
           />
-        ) : null}
+        )}
 
         {zones.map((zone) => {
           if (!zone.centre) return null;
-          const p = project(zone.centre.latitude, zone.centre.longitude);
           const colour = colors.zone[zone.type] || colors.textMuted;
+          // React Native Maps Circle takes a radius in meters
           return (
             <Circle
               key={zone.id}
-              cx={p.x}
-              cy={p.y}
-              r={Math.max(metresToPixels(zone.radiusMetres || 50), 14)}
-              fill={colour}
-              fillOpacity={0.18}
-              stroke={colour}
+              center={{ latitude: zone.centre.latitude, longitude: zone.centre.longitude }}
+              radius={zone.radiusMetres || 50}
+              fillColor={`${colour}33`} // 20% opacity hex
+              strokeColor={colour}
               strokeWidth={1.5}
             />
           );
         })}
 
         {markers.map((marker) => {
-          const p = project(marker.latitude, marker.longitude);
           const colour = MARKER_COLOUR[marker.state] || colors.textMuted;
           return (
-            <G key={marker.id}>
-              <Circle cx={p.x} cy={p.y} r={7} fill={colour} stroke={colors.white} strokeWidth={2} />
-            </G>
+            <Marker
+              key={marker.id}
+              coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+              pinColor={colour}
+            />
           );
         })}
-      </Svg>
+      </MapView>
     </View>
   );
 }
@@ -166,8 +150,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center'
   },
   placeholder: {
     backgroundColor: colors.surfaceAlt,

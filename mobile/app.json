@@ -49,9 +49,6 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Smart Agriculture to use your location to map scans and fetch local soil and weather data."
         }
       ]
-    ],
-    "extra": {
-      "apiBaseUrl": "http://10.0.2.2:3000/api"
-    }
+    ]
   }
 }
