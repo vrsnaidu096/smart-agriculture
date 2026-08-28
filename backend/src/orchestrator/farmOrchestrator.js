@@ -123,7 +123,7 @@ class FarmOrchestrator {
 
     // 6.5 Recommendation Engine (Phase 11.5)
     // Sit AFTER SafetyValidator: enrich with symptoms, precautions, and monitoring
-    const enrichedData = RecommendationEngine.enrich(safeRecommendations, farmContext);
+    const enrichedData = await RecommendationEngine.enrich(safeRecommendations, farmContext);
 
     // 7. Save History (Phase 12)
     const scanId = await HistoryService.saveScan({
