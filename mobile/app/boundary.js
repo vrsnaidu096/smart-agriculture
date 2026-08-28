@@ -120,68 +120,40 @@ export default function BoundaryScreen({ navigation }) {
       <ScreenHeader title={t('map_farm')} onBack={() => { pause(); navigation.goBack(); }} />
 
       <View style={styles.content}>
-        <Text style={styles.hint}>{t('map_farm_hint') || 'Tap "Start Mapping", then drag your finger to sketch your farm.'}</Text>
+        <Text style={styles.hint}>{t('map_farm_hint') || 'Tap the map to drop pins at the corners of your farm.'}</Text>
 
         <FarmMapView 
           boundary={previewBoundary} 
           markers={[]} 
           zones={[]} 
-          height={280} 
-          scrollEnabled={!tracking}
-          onLongPress={(e) => {
-            if (!tracking) return;
+          height={320} 
+          onPress={(e) => {
             const pt = e.nativeEvent.coordinate;
             setPoints(current => [...current, { latitude: pt.latitude, longitude: pt.longitude }]);
           }}
-          onPanDrag={(e) => {
-            if (!tracking) return;
-            const pt = { latitude: e.nativeEvent.coordinate.latitude, longitude: e.nativeEvent.coordinate.longitude };
-            setPoints(current => {
-               if (current.length === 0) return [pt];
-               const last = current[current.length - 1];
-               if (distance(last, pt) < MIN_SPACING_METRES) return current;
-               return [...current, pt];
-            });
-          }}
         />
 
-        {permissionDenied ? (
-          <Card style={styles.warning}>
-            <Text style={styles.warningText}>{t('permission_location')}</Text>
-          </Card>
-        ) : null}
-
-        <Card style={styles.statsCard}>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>{t('accuracy') || 'Method'}</Text>
-            <Text style={styles.statValue}>{accuracy ? accuracyLabel(accuracy) : 'Manual Tap'}</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>{t('points')}</Text>
-            <Text style={styles.statValue}>{points.length}/{TARGET_POINTS}</Text>
-          </View>
-        </Card>
-
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => {
-               if (tracking) { pause(); } 
-               else { setTracking(true); }
-            }}
-            activeOpacity={0.85}
+        <View style={styles.toolsRow}>
+          <TouchableOpacity 
+            style={[styles.toolButton, points.length === 0 && styles.disabled]} 
+            onPress={() => setPoints(current => current.slice(0, -1))}
+            disabled={points.length === 0}
           >
-            <Ionicons
-              name={tracking ? 'pause' : 'play'}
-              size={17}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.secondaryText}>
-              {tracking ? t('pause') : points.length ? t('resume') : t('start_mapping')}
-            </Text>
+            <Ionicons name="arrow-undo-outline" size={20} color={points.length === 0 ? colors.textMuted : colors.text} />
+            <Text style={[styles.toolText, points.length === 0 && { color: colors.textMuted }]}>Undo</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity 
+            style={[styles.toolButton, points.length === 0 && styles.disabled]} 
+            onPress={() => setPoints([])}
+            disabled={points.length === 0}
+          >
+            <Ionicons name="trash-outline" size={20} color={points.length === 0 ? colors.textMuted : colors.error} />
+            <Text style={[styles.toolText, points.length === 0 ? { color: colors.textMuted } : { color: colors.error }]}>Clear</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[styles.primaryButton, (points.length < MIN_POINTS || saving) && styles.disabled]}
             onPress={finish}
@@ -189,7 +161,7 @@ export default function BoundaryScreen({ navigation }) {
             activeOpacity={0.85}
           >
             <Text style={styles.primaryText}>
-              {saving ? t('loading') : t('finish_mapping')}
+              {saving ? t('loading') : t('finish_mapping')} ({points.length} points)
             </Text>
           </TouchableOpacity>
         </View>
@@ -202,25 +174,10 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { flex: 1, padding: spacing.lg, gap: spacing.md },
   hint: { ...typography.bodySecondary, textAlign: 'center' },
-  statsCard: { flexDirection: 'row', alignItems: 'center' },
-  stat: { flex: 1, alignItems: 'center' },
-  statDivider: { width: 1, height: 32, backgroundColor: colors.border },
-  statLabel: { ...typography.caption },
-  statValue: { ...typography.subheading, marginTop: 2 },
+  toolsRow: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: spacing.sm },
+  toolButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm },
+  toolText: { ...typography.body, fontWeight: '600' },
   buttonRow: { flexDirection: 'row', gap: spacing.md, marginTop: 'auto' },
-  secondaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.lg,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface
-  },
-  secondaryText: { ...typography.body, fontWeight: '700', color: colors.textSecondary },
   primaryButton: {
     flex: 1,
     alignItems: 'center',
