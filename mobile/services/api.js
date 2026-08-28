@@ -7,7 +7,7 @@ import Constants from 'expo-constants';
  * The base URL comes from app.json -> expo.extra.apiBaseUrl so it is not
  */
 
-const FALLBACK_URL = 'https://viakt-2401-4900-97ca-94f9-8c3d-b77b-dcb8-3c5e.free.pinggy.net/api';
+const FALLBACK_URL = 'https://bmcvs-2401-4900-97ca-94f9-f18f-4e90-ea06-9a77.free.pinggy.net/api';
 
 export const API_BASE_URL =
   Constants.expoConfig?.extra?.apiBaseUrl ||
@@ -17,6 +17,16 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 45000,
   headers: { 'Content-Type': 'application/json' }
+});
+
+import { getToken } from './storage';
+
+api.interceptors.request.use(async (config) => {
+  const token = await getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 /** Normalise every failure into one shape the screens can render. */

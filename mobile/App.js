@@ -16,6 +16,7 @@ import HistoryScreen from './app/history';
 import AlertsScreen from './app/alerts';
 import SettingsScreen from './app/settings';
 import BoundaryScreen from './app/boundary';
+import LoginScreen from './app/login';
 
 const Stack = createNativeStackNavigator();
 
@@ -31,9 +32,10 @@ export default function App() {
         <StatusBar style="dark" />
         <NavigationContainer>
           <Stack.Navigator
-            initialRouteName="Home"
-            screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+            initialRouteName="Login"
+            screenOptions={{ headerShown: false, animation: 'fade' }}
           >
+            <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Scan" component={ScanScreen} />
             <Stack.Screen name="Preview" component={PreviewScreen} />

@@ -41,4 +41,7 @@ export const setActiveFarmId = (id) => write(KEYS.ACTIVE_FARM, id);
 export const getFarmerName = () => read(KEYS.FARMER_NAME, null);
 export const setFarmerName = (name) => write(KEYS.FARMER_NAME, name);
 
-export default { getLanguage, setLanguage, getActiveFarmId, setActiveFarmId, getFarmerName, setFarmerName };
+export const getToken = () => read('@sa/token', null);
+export const setToken = (token) => write('@sa/token', token);
+
+export default { getLanguage, setLanguage, getActiveFarmId, setActiveFarmId, getFarmerName, setFarmerName, getToken, setToken };
