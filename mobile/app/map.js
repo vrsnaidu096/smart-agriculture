@@ -65,8 +65,8 @@ export default function MapScreen({ navigation }) {
         >
           <FarmMapView
             boundary={data?.boundary}
-            markers={data?.history?.map(scan => ({ latitude: scan.latitude, longitude: scan.longitude, status: scan.risk.riskLevel }))}
-            zones={data?.zones}
+            markers={data?.markers ?? []}
+            zones={data?.zones ?? []}
             height={400}
             is3D={is3D}
           /><Card>

@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import MapView, { Polygon, Circle, Marker, UrlTile } from 'react-native-maps';
+import MapView, { Polygon, Circle, Marker, Callout, Heatmap } from 'react-native-maps';
 import { colors, spacing, radius, typography } from '../theme';
 import { useTranslation } from '../i18n';
 
@@ -25,6 +25,16 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
       }
     }
   }, [is3D]);
+
+  // Generate heatmap points from historical scan markers
+  const heatmapPoints = useMemo(() => {
+    return markers.map(m => {
+      let weight = 10; // default healthy
+      if (m.state === 'HIGH_RISK') weight = 100;
+      else if (m.state === 'MONITOR') weight = 50;
+      return { latitude: m.latitude, longitude: m.longitude, weight };
+    });
+  }, [markers]);
 
   // Extract polygon points in { latitude, longitude } format for react-native-maps
   const boundaryPoints = useMemo(() => {
@@ -106,6 +116,39 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
           />
         )}
 
+        {heatmapPoints.length > 0 && (
+          <Heatmap
+            points={heatmapPoints}
+            radius={50}
+            opacity={0.8}
+            gradient={{
+              colors: ['transparent', colors.zone.HEALTHY, colors.zone.MONITORING, colors.zone.HIGH_RISK],
+              startPoints: [0.01, 0.25, 0.5, 1],
+              colorMapSize: 256
+            }}
+          />
+        )}
+
+        {markers.map((m) => (
+          <Marker 
+            key={m.id || Math.random().toString()} 
+            coordinate={{ latitude: m.latitude, longitude: m.longitude }}
+            pinColor={MARKER_COLOUR[m.state] || colors.primary}
+          >
+            <Callout tooltip>
+              <View style={styles.callout}>
+                <Text style={styles.calloutTitle}>{m.disease === 'CLEAN' ? 'Healthy Crop' : (m.disease || 'Unknown')}</Text>
+                <Text style={styles.calloutDate}>{m.timestamp ? new Date(m.timestamp).toLocaleDateString() : ''}</Text>
+                {m.riskLevel && (
+                  <View style={[styles.badge, { backgroundColor: MARKER_COLOUR[m.state] }]}>
+                    <Text style={styles.badgeText}>{m.riskLevel} RISK</Text>
+                  </View>
+                )}
+              </View>
+            </Callout>
+          </Marker>
+        ))}
+
         {zones.map((zone) => {
           if (!zone.centre) return null;
           const colour = colors.zone[zone.type] || colors.textMuted;
@@ -184,6 +227,22 @@ const styles = StyleSheet.create({
   },
   legend: { marginTop: spacing.md, gap: spacing.sm },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendLabel: { ...typography.bodySecondary }
+  legendDot: { width: 12, height: 12, borderRadius: 6 },
+  legendText: { ...typography.bodySecondary, fontSize: 13, flex: 1 },
+  callout: {
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    minWidth: 150,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  calloutTitle: { ...typography.body, fontWeight: '700', marginBottom: 2, textAlign: 'center' },
+  calloutDate: { ...typography.caption, color: colors.textMuted, marginBottom: 6 },
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
+  badgeText: { color: colors.white, fontSize: 10, fontWeight: '700' }
 });
