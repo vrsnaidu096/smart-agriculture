@@ -1,23 +1,71 @@
 import axios from 'axios';
+import Constants from 'expo-constants';
 
-// Use the Pinggy tunnel URL to bypass strict Wi-Fi firewalls
-const API_BASE_URL = 'https://udipd-2401-4900-97ca-94f9-8c3d-b77b-dcb8-3c5e.free.pinggy.net/api'; 
+/**
+ * Backend client.
+ *
+ * The base URL comes from app.json -> expo.extra.apiBaseUrl so it is not
+ * hardcoded in source. Override per-machine with EXPO_PUBLIC_API_URL.
+ */
+
+const FALLBACK_URL = 'https://zjsdf-2401-4900-97ca-94f9-8c3d-b77b-dcb8-3c5e.free.pinggy.net/api';
+
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  Constants.expoConfig?.extra?.apiBaseUrl ||
+  FALLBACK_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  timeout: 45000,
+  headers: { 'Content-Type': 'application/json' }
 });
 
-export const analyzeCrop = async (payload) => {
+/** Normalise every failure into one shape the screens can render. */
+const toError = (error) => {
+  if (error.response?.data?.error) {
+    return {
+      message: error.response.data.error.message || 'Request failed.',
+      code: error.response.data.error.code || 'ERROR',
+      status: error.response.status
+    };
+  }
+  if (error.code === 'ECONNABORTED') {
+    return { message: 'The request timed out. Please try again.', code: 'TIMEOUT' };
+  }
+  return { message: 'Cannot reach the server. Check your connection.', code: 'NETWORK' };
+};
+
+const unwrap = async (promise) => {
   try {
-    const response = await api.post('/analyze', payload);
-    return response.data;
+    const response = await promise;
+    return { ok: true, data: response.data?.data ?? response.data };
   } catch (error) {
-    console.error('API Error during analysis:', error);
-    throw error;
+    console.warn('[api]', error.message);
+    return { ok: false, error: toError(error) };
   }
 };
+
+// --- Analysis ---------------------------------------------------------------
+export const analyzeCrop = (payload) => unwrap(api.post('/analyze', payload));
+
+// --- Farms ------------------------------------------------------------------
+export const listFarms = () => unwrap(api.get('/farms'));
+export const getFarm = (farmId) => unwrap(api.get(`/farms/${farmId}`));
+export const createFarm = (name) => unwrap(api.post('/farms', { name }));
+export const getFarmSummary = (farmId) => unwrap(api.get(`/farms/${farmId}/summary`));
+
+// --- History ----------------------------------------------------------------
+export const getHistory = (farmId, limit = 20, offset = 0) =>
+  unwrap(api.get(`/history/${farmId}`, { params: { limit, offset } }));
+export const getScan = (scanId) => unwrap(api.get(`/history/scan/${scanId}`));
+
+// --- Alerts -----------------------------------------------------------------
+export const getAlerts = (farmId) => unwrap(api.get(`/alerts/${farmId}`));
+
+// --- LingBot-Map ------------------------------------------------------------
+export const getMapData = (farmId) => unwrap(api.get(`/map/${farmId}`));
+export const saveBoundary = (farmId, coordinates) =>
+  unwrap(api.post('/map/boundary', { farmId, geojson: { type: 'Polygon', coordinates: [coordinates] } }));
 
 export default api;

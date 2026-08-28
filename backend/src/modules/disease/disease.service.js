@@ -3,42 +3,55 @@ const { getDiseasePrediction } = require('../../integrations/diseaseModel');
 
 /**
  * Disease Service
- * Handles business logic and delegates to the integration layer.
+ *
+ * Runs each submitted photo through the inference sidecar and picks the most
+ * actionable result. Precedence, worst news first:
+ *
+ *   1. DISEASE_DETECTED  - stop, the farmer needs to know
+ *   2. HEALTHY           - a confident clean bill of health
+ *   3. ABSTAINED         - a leaf, but too unclear to call
+ *   4. REJECTED          - no crop leaf found in any photo
+ *   5. UNAVAILABLE       - the service could not answer
+ *
+ * Every per-image result is retained in `perImage` for persistence, whatever
+ * the headline outcome.
  */
 class DiseaseService {
   async analyze(images, cropName = null) {
-    try {
-      let highestRiskResult = null;
+    const perImage = [];
 
-      // Loop through the uploaded images (sequentially to avoid hitting HF Free Tier rate limits)
+    try {
+      let healthy = null;
+      let abstained = null;
+      let rejected = null;
+      let diseased = null;
+
       for (let i = 0; i < images.length; i++) {
         console.log(`[DiseaseService] Analyzing image ${i + 1} of ${images.length}...`);
-        const rawPrediction = await getDiseasePrediction(images[i], cropName);
-        const mappedResult = DiseaseMapper.mapToStandard(rawPrediction);
 
-        // If it's not a crop, skip it
-        if (mappedResult.status === 'NOT_A_CROP') continue;
+        const raw = await getDiseasePrediction(images[i], cropName);
+        const mapped = DiseaseMapper.mapToStandard(raw);
+        perImage.push({ index: i, ...mapped });
 
-        // If we found a disease, we can set it as the highest risk and stop (or continue to find worst)
-        // For MVP, if we find a disease, we immediately flag it for the user
-        if (mappedResult.healthStatus === 'DISEASE_DETECTED') {
-          return mappedResult;
+        if (mapped.status === 'SUCCESS' && mapped.healthStatus === 'DISEASE_DETECTED') {
+          diseased = mapped;
+          break; // break, not return - perImage must survive
         }
-
-        // Keep track of a valid result in case they are all healthy
-        highestRiskResult = mappedResult;
+        if (mapped.status === 'SUCCESS' && !healthy) healthy = mapped;
+        if (mapped.status === 'ABSTAINED' && !abstained) abstained = mapped;
+        if (mapped.status === 'REJECTED' && !rejected) rejected = mapped;
       }
 
-      // If all images were rejected as NOT_A_CROP
-      if (!highestRiskResult) {
-        return { status: 'NOT_A_CROP' };
-      }
+      const result =
+        diseased ||
+        healthy ||
+        abstained ||
+        rejected || { status: 'UNAVAILABLE', healthStatus: 'UNKNOWN', source: 'live' };
 
-      // If we got here, they were all healthy crops
-      return highestRiskResult;
+      return { ...result, perImage };
     } catch (error) {
-      console.error('Disease AI failed:', error.message);
-      return { status: 'UNAVAILABLE' }; // Graceful degradation
+      console.error('Disease analysis failed:', error.message);
+      return { status: 'UNAVAILABLE', healthStatus: 'UNKNOWN', source: 'live', perImage };
     }
   }
 }

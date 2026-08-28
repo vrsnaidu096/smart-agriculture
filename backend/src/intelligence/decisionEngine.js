@@ -1,60 +1,97 @@
-const fs = require('fs');
-const path = require('path');
-
-// Load knowledge rules
 const irrigationRules = require('../knowledge/irrigation.json').rules;
 const weatherRules = require('../knowledge/weatherRules.json').rules;
+
+/**
+ * Decision Engine
+ *
+ * Rules whose inputs are unavailable are SKIPPED, not evaluated against
+ * defaults. Advice derived from a missing reading is worse than no advice.
+ */
 
 class DecisionEngine {
   evaluate(farmContext) {
     const recommendations = [];
+    const skipped = [];
 
-    // 1. Disease Rules
-    if (farmContext.disease?.healthStatus === 'DISEASE_DETECTED') {
+    const disease = farmContext.disease;
+    const weather = farmContext.weather;
+    const soil = farmContext.soil;
+
+    // --- Disease ---------------------------------------------------------
+    if (disease?.status === 'SUCCESS' && disease.healthStatus === 'DISEASE_DETECTED') {
+      const confidence = (disease.confidence ?? 0) * 100;
       recommendations.push({
         type: 'DISEASE',
         priority: 'HIGH',
-        message: `Detected ${farmContext.disease.disease} with ${(farmContext.disease.confidence * 100).toFixed(1)}% confidence. Immediate treatment recommended.`
+        ruleId: 'disease_001',
+        message: `Detected ${disease.disease} with ${confidence.toFixed(1)}% confidence. Immediate treatment recommended.`
       });
+    } else if (disease?.status === 'ABSTAINED') {
+      recommendations.push({
+        type: 'DISEASE',
+        priority: 'MEDIUM',
+        ruleId: 'disease_abstain',
+        message: disease.message
+          || 'The photo was not clear enough to identify a disease. Please retake it in good light with one leaf filling the frame.'
+      });
+    } else if (disease?.status === 'UNAVAILABLE') {
+      skipped.push('disease');
     }
 
-    // 2. Weather Rules
-    // Simple naive evaluation of condition strings for MVP
-    if (farmContext.weather) {
-      if (farmContext.weather.windSpeed > 20) {
+    // --- Weather ---------------------------------------------------------
+    if (weather?.status === 'OK') {
+      const windRule = weatherRules.find((r) => r.id === 'weather_001');
+      if (weather.windSpeed != null && weather.windSpeed > 20) {
         recommendations.push({
-          type: 'WEATHER',
-          priority: 'MEDIUM',
-          message: 'High winds detected. Delay chemical spraying.'
+          type: 'WEATHER', priority: 'MEDIUM', ruleId: windRule.id,
+          message: `${windRule.hazard}: ${windRule.advice}`
         });
       }
-      if (farmContext.weather.rainExpected) {
+
+      const rainRule = weatherRules.find((r) => r.id === 'weather_003');
+      if (weather.rainExpected) {
         recommendations.push({
-          type: 'WEATHER',
-          priority: 'MEDIUM',
-          message: 'Rain expected. Foliar treatments may wash off.'
+          type: 'WEATHER', priority: 'MEDIUM', ruleId: rainRule.id,
+          message: `${rainRule.hazard}: ${rainRule.advice}`
         });
       }
-      if (farmContext.weather.humidity > 85 && farmContext.weather.temperature > 25) {
+
+      const fungalRule = weatherRules.find((r) => r.id === 'weather_002');
+      if (
+        weather.humidity != null && weather.humidity > 85 &&
+        weather.temperature != null && weather.temperature > 25
+      ) {
         recommendations.push({
-          type: 'WEATHER',
-          priority: 'HIGH',
-          message: 'High fungal risk due to heat and humidity. Increase scouting.'
+          type: 'WEATHER', priority: 'HIGH', ruleId: fungalRule.id,
+          message: `${fungalRule.hazard}: ${fungalRule.advice}`
         });
       }
+    } else {
+      skipped.push('weather');
     }
 
-    // 3. Soil/Irrigation Rules
-    if (farmContext.soil) {
-      // Mock logic: If we had live soil moisture, we would check it here.
-      if (!farmContext.weather?.rainExpected) {
-         // recommend regular watering if no rain
-         recommendations.push({
-          type: 'IRRIGATION',
-          priority: 'LOW',
-          message: 'No rain expected. Maintain regular irrigation schedule.'
-         });
+    // --- Irrigation ------------------------------------------------------
+    // Needs both soil and weather. Without live soil moisture only the
+    // rain-delay rule is decidable, so that is the only one applied.
+    if (soil?.status === 'OK' && weather?.status === 'OK') {
+      const delayRule = irrigationRules.find((r) => r.id === 'irrigation_003');
+      if (weather.rainExpected && (weather.rainfallProbability ?? 0) > 70) {
+        recommendations.push({
+          type: 'IRRIGATION', priority: delayRule.priority, ruleId: delayRule.id,
+          message: delayRule.action
+        });
+      } else if (!weather.rainExpected) {
+        recommendations.push({
+          type: 'IRRIGATION', priority: 'LOW', ruleId: 'irrigation_default',
+          message: 'No rain expected. Maintain your regular irrigation schedule.'
+        });
       }
+    } else {
+      skipped.push('irrigation');
+    }
+
+    if (skipped.length > 0) {
+      console.log(`[DecisionEngine] Skipped rules with unavailable inputs: ${skipped.join(', ')}`);
     }
 
     return recommendations;

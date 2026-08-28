@@ -1,121 +1,62 @@
 const axios = require('axios');
 
 /**
- * Validates if the image actually contains a plant/leaf using a general AI model.
+ * Disease Model Integration
+ *
+ * A thin HTTP client for the Python inference sidecar (see ../../ml). All the
+ * intelligence - the CLIP leaf/not-leaf gate, crop routing, calibration and
+ * abstention - lives there.
+ *
+ * There is deliberately NO mock fallback. If the sidecar cannot answer, this
+ * returns UNAVAILABLE and the farmer is told the service is down. Inventing a
+ * diagnosis is worse than admitting we do not have one.
  */
-const validateIsCrop = async (imageBuffer, apiKey) => {
+
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://127.0.0.1:8000';
+const ML_TIMEOUT_MS = Number(process.env.ML_TIMEOUT_MS || 20000);
+
+const unavailable = (reason) => ({
+  status: 'UNAVAILABLE',
+  source: 'live',
+  reason,
+  message: 'Crop analysis is temporarily unavailable. Please try again shortly.'
+});
+
+const getDiseasePrediction = async (image, cropName) => {
   try {
-    const VISION_MODEL = 'https://api-inference.huggingface.co/models/google/vit-base-patch16-224';
-    
-    const response = await axios.post(VISION_MODEL, imageBuffer, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/octet-stream'
-      },
-      timeout: 8000
-    });
-
-    const predictions = response.data;
-    if (!Array.isArray(predictions)) return true; // if API acts weird, let it pass rather than break the app
-
-    // Check if any of the top 3 guesses are plant-related
-    const plantKeywords = ['plant', 'leaf', 'pot', 'flower', 'tree', 'grass', 'agriculture', 'crop', 'vegetable', 'fruit', 'daisy', 'corn'];
-    
-    const topGuesses = predictions.slice(0, 3).map(p => p.label.toLowerCase());
-    
-    const isPlant = topGuesses.some(guess => 
-      plantKeywords.some(keyword => guess.includes(keyword))
+    const response = await axios.post(
+      `${ML_SERVICE_URL}/predict`,
+      { image, crop: cropName || null },
+      { timeout: ML_TIMEOUT_MS, headers: { 'Content-Type': 'application/json' } }
     );
 
-    return isPlant;
+    const data = response.data;
+    if (!data || typeof data.status !== 'string') {
+      console.error('[Integration Error] Malformed response from inference service.');
+      return unavailable('MALFORMED_RESPONSE');
+    }
+
+    return data;
   } catch (error) {
-    console.warn('[Warning] Crop validation API failed. Bypassing check.');
-    return true; // Bypass on error so the main demo doesn't crash
+    const detail = error.response
+      ? `HTTP ${error.response.status}`
+      : error.code || error.message;
+    console.error(`[Integration Error] Inference service unreachable: ${detail}`);
+    return unavailable(error.code === 'ECONNABORTED' ? 'TIMEOUT' : 'UNREACHABLE');
   }
 };
 
-/**
- * Disease Model Integration
- */
-const getDiseasePrediction = async (imageBuffer, cropName) => {
+const checkHealth = async () => {
   try {
-    const API_KEY = process.env.HF_API_KEY; 
-
-    // Extract base64 to buffer
-    const base64Data = imageBuffer.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
-
-    if (API_KEY) {
-      // Step 1: Pre-validate that it's actually a crop/plant!
-      console.log('[Integration] Verifying if image is a crop...');
-      const isActuallyACrop = await validateIsCrop(buffer, API_KEY);
-      
-      if (!isActuallyACrop) {
-        return { status: 'NOT_A_CROP' };
-      }
-    }
-
-    console.log('[Integration] Sending image to Disease AI...');
-    
-    const MODEL_URL = process.env.HF_MODEL_URL || 'https://api-inference.huggingface.co/models/jayanta/plant-disease-classification';
-
-    if (!API_KEY) {
-      console.warn('[Warning] No HF_API_KEY found in .env. Using mock fallback.');
-      return getMockResponse(cropName);
-    }
-
-    const response = await axios.post(MODEL_URL, buffer, {
-      headers: {
-        Authorization: `Bearer ${API_KEY}`,
-        'Content-Type': 'application/octet-stream'
-      },
-      timeout: 10000 
-    });
-
-    const predictions = response.data;
-    if (predictions && predictions.length > 0) {
-      const bestMatch = predictions[0];
-      
-      // If confidence is too low, deny it
-      if (bestMatch.score < 0.50) {
-        return { status: 'NOT_A_CROP' };
-      }
-
-      return {
-        detected_crop: cropName || bestMatch.label.split('___')[0].replace(/_/g, ' '),
-        predicted_disease: bestMatch.label.split('___')[1] ? bestMatch.label.split('___')[1].replace(/_/g, ' ') : bestMatch.label,
-        confidence_score: bestMatch.score,
-        status: 'SUCCESS'
-      };
-    }
-
-    throw new Error("Invalid response format from Hugging Face");
+    const response = await axios.get(`${ML_SERVICE_URL}/health`, { timeout: 5000 });
+    return { reachable: true, ...response.data };
   } catch (error) {
-    console.error('[Integration Error] Hugging Face API failed:', error.message);
-    return getMockResponse(cropName);
+    return { reachable: false, error: error.code || error.message };
   }
-};
-
-const getMockResponse = (cropName) => {
-  const crop = cropName?.toLowerCase() || 'rice';
-  
-  if (crop === 'sugarcane') {
-    return {
-      detected_crop: 'Sugarcane',
-      predicted_disease: 'Red Rot',
-      confidence_score: 0.89,
-      status: 'SUCCESS'
-    };
-  }
-
-  return {
-    detected_crop: 'Rice',
-    predicted_disease: 'Rice Blast',
-    confidence_score: 0.92,
-    status: 'SUCCESS'
-  };
 };
 
 module.exports = {
-  getDiseasePrediction
+  getDiseasePrediction,
+  checkHealth,
+  ML_SERVICE_URL
 };

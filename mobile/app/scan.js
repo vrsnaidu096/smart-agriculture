@@ -1,248 +1,236 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
-import { Camera, CameraView } from 'expo-camera';
-import { getCurrentLocation } from '../services/location';
-import { analyzeCrop } from '../services/api';
+import React, { useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+
+import { colors, spacing, radius, typography } from '../theme';
+import { useTranslation } from '../i18n';
+
+const MAX_PHOTOS = 4;
 
 export default function ScanScreen({ navigation }) {
-  const [hasPermission, setHasPermission] = useState(null);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [photos, setPhotos] = useState([]); // Changed to array
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [selectedCrop, setSelectedCrop] = useState('Rice');
+  const { t } = useTranslation();
+  const [permission, requestPermission] = useCameraPermissions();
+  const [ready, setReady] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [capturing, setCapturing] = useState(false);
   const cameraRef = useRef(null);
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
-
   const takePicture = async () => {
-    if (cameraRef.current && cameraReady && photos.length < 4) {
-      const options = { quality: 0.7, base64: true };
-      const data = await cameraRef.current.takePictureAsync(options);
-      setPhotos([...photos, data]);
-    }
-  };
-
-  const retakePictures = () => {
-    setPhotos([]);
-  };
-
-  const handleAnalyze = async () => {
-    if (photos.length === 0) return;
-    
-    setIsAnalyzing(true);
+    if (!cameraRef.current || !ready || capturing || photos.length >= MAX_PHOTOS) return;
+    setCapturing(true);
     try {
-      const location = await getCurrentLocation();
-      
-      const payload = {
-        images: photos.map(p => `data:image/jpeg;base64,${p.base64}`),
-        latitude: location.latitude,
-        longitude: location.longitude,
-        accuracy: location.accuracy,
-        farmId: 1, 
-        cropName: selectedCrop,
-        language: 'en'
-      };
-
-      const result = await analyzeCrop(payload);
-      setIsAnalyzing(false);
-
-      if (result.data?.error) {
-        Alert.alert('Invalid Images', result.data.message);
-        return;
-      }
-      
-      Alert.alert('Analysis Complete', `Crop: ${result.data?.disease?.crop}\nDisease: ${result.data?.disease?.disease || 'Unknown'}\nRisk Level: ${result.data?.risk?.riskLevel || 'N/A'}\n\nAdvice: ${result.data?.recommendation}`);
-      
+      // quality 0.7 keeps the base64 payload small enough for the analyze call.
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, base64: true });
+      setPhotos((current) => [...current, photo]);
     } catch (error) {
-      setIsAnalyzing(false);
-      Alert.alert('Error', 'Failed to analyze crops. Please ensure backend is running.');
-      console.error(error);
+      console.warn('[scan] capture failed:', error.message);
+    } finally {
+      setCapturing(false);
     }
   };
 
-  if (hasPermission === null) {
-    return <View style={styles.container}><Text>Requesting permissions...</Text></View>;
+  const pickImage = async () => {
+    if (photos.length >= MAX_PHOTOS) return;
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setPhotos((current) => [...current, result.assets[0]]);
+      }
+    } catch (error) {
+      console.warn('[scan] gallery selection failed:', error.message);
+    }
+  };
+
+  if (!permission) {
+    return (
+      <View style={styles.centre}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
   }
-  if (hasPermission === false) {
-    return <View style={styles.container}><Text>No access to camera</Text></View>;
+
+  if (!permission.granted) {
+    return (
+      <SafeAreaView style={styles.permissionWrap}>
+        <Ionicons name="camera-outline" size={48} color={colors.primary} />
+        <Text style={styles.permissionTitle}>{t('permission_camera')}</Text>
+        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission} activeOpacity={0.85}>
+          <Text style={styles.permissionButtonText}>{t('grant_permission')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.cancel}>{t('cancel')}</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.cropSelector}>
-        <TouchableOpacity 
-          style={[styles.cropButton, selectedCrop === 'Rice' && styles.cropButtonActive]} 
-          onPress={() => setSelectedCrop('Rice')}
-        >
-          <Text style={styles.cropButtonText}>Rice</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.cropButton, selectedCrop === 'Sugarcane' && styles.cropButtonActive]} 
-          onPress={() => setSelectedCrop('Sugarcane')}
-        >
-          <Text style={styles.cropButtonText}>Sugarcane</Text>
-        </TouchableOpacity>
-      </View>
+      <CameraView
+        style={StyleSheet.absoluteFill}
+        facing="back"
+        ref={cameraRef}
+        onCameraReady={() => setReady(true)}
+      />
 
-      <View style={styles.cameraContainer}>
-        <CameraView 
-          style={styles.camera} 
-          facing="back" 
-          ref={cameraRef}
-          onCameraReady={() => setCameraReady(true)}
-        >
-          <View style={styles.overlay}>
-            <View style={styles.frame} />
-            <Text style={styles.photoCount}>{photos.length}/4 Captured</Text>
-            {photos.length < 4 && (
-              <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-                <View style={styles.captureButtonInner} />
-              </TouchableOpacity>
-            )}
+      <SafeAreaView style={styles.overlay} edges={['top', 'bottom']}>
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.roundButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={22} color={colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.hint}>{t('position_leaf')}</Text>
+          <TouchableOpacity style={styles.roundButton} onPress={pickImage} disabled={photos.length >= MAX_PHOTOS}>
+            <Ionicons name="images-outline" size={20} color={photos.length >= MAX_PHOTOS ? 'rgba(255,255,255,0.4)' : colors.white} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.frameArea}>
+          <View style={styles.frame}>
+            <View style={[styles.corner, styles.cornerTL]} />
+            <View style={[styles.corner, styles.cornerTR]} />
+            <View style={[styles.corner, styles.cornerBL]} />
+            <View style={[styles.corner, styles.cornerBR]} />
           </View>
-        </CameraView>
-      </View>
+          <Text style={styles.counter}>{t('photos_captured', { count: photos.length })}</Text>
+        </View>
 
-      {photos.length > 0 && (
-        <View style={styles.bottomControls}>
-          <View style={styles.thumbnails}>
-            {photos.map((p, index) => (
-              <Image key={index} source={{ uri: p.uri }} style={styles.thumbnailImg} />
+        <View style={styles.bottomBar}>
+          <View style={styles.thumbRow}>
+            {photos.map((photo, index) => (
+              <Image key={index} source={{ uri: photo.uri }} style={styles.thumb} />
             ))}
           </View>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={retakePictures}>
-              <Text style={styles.buttonText}>Clear All</Text>
+
+          <View style={styles.controlRow}>
+            <TouchableOpacity
+              style={styles.sideButton}
+              onPress={() => setPhotos([])}
+              disabled={photos.length === 0}
+            >
+              <Text style={[styles.sideText, photos.length === 0 && styles.disabledText]}>
+                {t('clear_all')}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={handleAnalyze} disabled={isAnalyzing}>
-              <Text style={styles.buttonText}>{isAnalyzing ? 'Analyzing...' : `Analyze ${photos.length}`}</Text>
+
+            <TouchableOpacity
+              style={[styles.shutter, photos.length >= MAX_PHOTOS && styles.shutterDisabled]}
+              onPress={takePicture}
+              disabled={photos.length >= MAX_PHOTOS || capturing}
+              activeOpacity={0.8}
+            >
+              {capturing ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <View style={styles.shutterInner} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sideButton}
+              onPress={() => navigation.navigate('Preview', { photos })}
+              disabled={photos.length === 0}
+            >
+              <Text style={[styles.sideText, styles.next, photos.length === 0 && styles.disabledText]}>
+                {t('preview')}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'black',
-  },
-  camera: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  frame: {
-    width: 250,
-    height: 250,
-    borderWidth: 2,
-    borderColor: '#27AE60',
-    backgroundColor: 'transparent',
-    marginBottom: 50,
-  },
-  captureButton: {
-    position: 'absolute',
-    bottom: 50,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  captureButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'white',
-  },
-  preview: {
-    flex: 1,
-    width: '100%',
-  },
-  buttonRow: {
+  container: { flex: 1, backgroundColor: '#000' },
+  centre: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  overlay: { flex: 1, justifyContent: 'space-between' },
+  topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 20,
-    backgroundColor: '#fff',
-  },
-  button: {
-    backgroundColor: '#27AE60',
-    padding: 15,
-    borderRadius: 10,
-    minWidth: 120,
     alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    gap: spacing.md
   },
-  secondaryButton: {
-    backgroundColor: '#95A5A6',
+  roundButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+  hint: {
+    flex: 1,
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    overflow: 'hidden'
   },
-  cropSelector: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  frameArea: { alignItems: 'center', gap: spacing.lg },
+  frame: { width: 250, height: 250 },
+  corner: { position: 'absolute', width: 34, height: 34, borderColor: colors.white, borderWidth: 3 },
+  cornerTL: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: 10 },
+  cornerTR: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: 10 },
+  cornerBL: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 10 },
+  cornerBR: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 10 },
+  counter: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '700',
     backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingTop: 50,
-    paddingBottom: 20,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    overflow: 'hidden'
   },
-  cropButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginHorizontal: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'white',
+  bottomBar: { paddingBottom: spacing.lg, gap: spacing.lg },
+  thumbRow: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, minHeight: 52 },
+  thumb: { width: 52, height: 52, borderRadius: radius.sm, borderWidth: 2, borderColor: colors.white },
+  controlRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl },
+  sideButton: { width: 76, alignItems: 'center' },
+  sideText: { color: colors.white, fontSize: 14, fontWeight: '600' },
+  next: { color: colors.accent, fontWeight: '700' },
+  disabledText: { opacity: 0.35 },
+  shutter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,255,255,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  cropButtonActive: {
-    backgroundColor: '#27AE60',
-    borderColor: '#27AE60',
-  },
-  cropButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  cameraContainer: {
+  shutterDisabled: { opacity: 0.4 },
+  shutterInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: colors.white },
+  permissionWrap: {
     flex: 1,
-  },
-  photoCount: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-    position: 'absolute',
-    top: 50,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 10,
-    borderRadius: 10,
-  },
-  bottomControls: {
-    backgroundColor: 'white',
-    padding: 20,
-  },
-  thumbnails: {
-    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    backgroundColor: colors.background,
+    padding: spacing.xl,
+    gap: spacing.lg
   },
-  thumbnailImg: {
-    width: 60,
-    height: 60,
-    marginHorizontal: 5,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#27AE60',
-  }
+  permissionTitle: { ...typography.subheading, textAlign: 'center' },
+  permissionButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md
+  },
+  permissionButtonText: { ...typography.button, fontSize: 15 },
+  cancel: { ...typography.bodySecondary }
 });

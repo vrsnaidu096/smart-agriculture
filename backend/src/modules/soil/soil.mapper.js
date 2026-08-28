@@ -5,11 +5,12 @@ class SoilMapper {
     }
 
     return {
-      ph: rawResult.ph_value || null,
-      organicCarbon: rawResult.carbon_index || null,
-      soilType: rawResult.type || "Unknown",
-      bulkDensity: rawResult.density || null,
-      texture: rawResult.texture || null
+      status: 'OK',
+      ph: rawResult.ph_value ?? null,
+      organicCarbon: rawResult.carbon_index ?? null,
+      soilType: rawResult.type || 'Unknown',
+      bulkDensity: rawResult.density ?? null,
+      texture: rawResult.texture ?? null
     };
   }
 }
