@@ -120,9 +120,19 @@ export default function BoundaryScreen({ navigation }) {
       <ScreenHeader title={t('map_farm')} onBack={() => { pause(); navigation.goBack(); }} />
 
       <View style={styles.content}>
-        <Text style={styles.hint}>{t('map_farm_hint')}</Text>
+        <Text style={styles.hint}>{t('map_farm_hint') || 'Tap the map to drop pins and outline your farm boundary.'}</Text>
 
-        <FarmMapView boundary={previewBoundary} markers={[]} zones={[]} height={280} />
+        <FarmMapView 
+          boundary={previewBoundary} 
+          markers={[]} 
+          zones={[]} 
+          height={280} 
+          onPress={(e) => {
+            if (!tracking) return;
+            const pt = e.nativeEvent.coordinate;
+            setPoints(current => [...current, { latitude: pt.latitude, longitude: pt.longitude }]);
+          }}
+        />
 
         {permissionDenied ? (
           <Card style={styles.warning}>
@@ -132,8 +142,8 @@ export default function BoundaryScreen({ navigation }) {
 
         <Card style={styles.statsCard}>
           <View style={styles.stat}>
-            <Text style={styles.statLabel}>{t('accuracy')}</Text>
-            <Text style={styles.statValue}>{accuracyLabel(accuracy)}</Text>
+            <Text style={styles.statLabel}>{t('accuracy') || 'Method'}</Text>
+            <Text style={styles.statValue}>{accuracy ? accuracyLabel(accuracy) : 'Manual Tap'}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.stat}>
@@ -145,7 +155,10 @@ export default function BoundaryScreen({ navigation }) {
         <View style={styles.buttonRow}>
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={tracking ? pause : start}
+            onPress={() => {
+               if (tracking) { pause(); } 
+               else { setTracking(true); }
+            }}
             activeOpacity={0.85}
           >
             <Ionicons
