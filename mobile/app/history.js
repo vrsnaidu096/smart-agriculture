@@ -67,7 +67,27 @@ export default function HistoryScreen({ navigation }) {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={scans.length === 0 ? styles.emptyContent : styles.content}
         renderItem={({ item, index }) => (
-          <ScanListItem scan={item} showDivider={index < scans.length - 1} />
+          <ScanListItem 
+            scan={item} 
+            showDivider={index < scans.length - 1} 
+            onPress={() => {
+              // The history endpoint expands weather/soil for us but returns snake_case for some fields natively
+              // Or rather, the controller maps it to camelCase already (riskLevel, riskScore, etc).
+              // However, the Recommendation screen expects `result` structure to contain { recommendation, risk: { alert, riskScore, riskLevel } }
+              
+              // Construct the payload the Recommendation screen expects
+              const resultPayload = {
+                recommendation: item.recommendation,
+                risk: item.riskLevel ? {
+                  riskLevel: item.riskLevel,
+                  riskScore: item.riskScore,
+                  alert: `Historical scan showing ${item.riskLevel} risk.`, // We don't save the full alert text in DB, provide fallback
+                } : null
+              };
+              
+              navigation.navigate('Recommendation', { result: resultPayload });
+            }}
+          />
         )}
         refreshControl={
           <RefreshControl

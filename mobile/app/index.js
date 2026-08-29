@@ -158,7 +158,17 @@ export default function HomeScreen({ navigation }) {
                     key={scan.id}
                     scan={scan}
                     showDivider={index < summary.recentScans.length - 1}
-                    onPress={() => navigation.navigate('History')}
+                    onPress={() => {
+                      const resultPayload = {
+                        recommendation: scan.recommendation,
+                        risk: scan.riskLevel ? {
+                          riskLevel: scan.riskLevel,
+                          riskScore: scan.riskScore,
+                          alert: `Historical scan showing ${scan.riskLevel} risk.`,
+                        } : null
+                      };
+                      navigation.navigate('Recommendation', { result: resultPayload });
+                    }}
                   />
                 ))
               ) : (
