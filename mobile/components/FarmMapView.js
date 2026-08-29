@@ -26,15 +26,29 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
     }
   }, [is3D]);
 
-  // Generate heatmap points from historical scan markers
+  // Generate stable "Demo Jitter" so desk-testing looks like a real farm
+  const jitteredMarkers = useMemo(() => {
+    return markers.map((m, index) => {
+      // 0.0003 degrees is roughly 30 meters. We use sin/cos of index to make the random spread stable between renders.
+      const latOffset = (Math.sin(index * 12.9898) * 0.0003);
+      const lonOffset = (Math.cos(index * 78.233) * 0.0003);
+      return {
+        ...m,
+        latitude: m.latitude + latOffset,
+        longitude: m.longitude + lonOffset
+      };
+    });
+  }, [markers]);
+
+  // Generate heatmap points from the jittered markers
   const heatmapPoints = useMemo(() => {
-    return markers.map(m => {
+    return jitteredMarkers.map(m => {
       let weight = 10; // default healthy
       if (m.state === 'HIGH_RISK') weight = 100;
       else if (m.state === 'MONITOR') weight = 50;
       return { latitude: m.latitude, longitude: m.longitude, weight };
     });
-  }, [markers]);
+  }, [jitteredMarkers]);
 
   // Extract polygon points in { latitude, longitude } format for react-native-maps
   const boundaryPoints = useMemo(() => {
@@ -57,7 +71,7 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
         allLons.push(p.longitude);
       });
     }
-    markers.forEach(m => {
+    jitteredMarkers.forEach(m => {
       allLats.push(m.latitude);
       allLons.push(m.longitude);
     });
@@ -89,7 +103,7 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
       latitudeDelta: (maxLat - minLat) * 1.5 || 0.005,
       longitudeDelta: (maxLon - minLon) * 1.5 || 0.005,
     };
-  }, [boundaryPoints, markers, zones]);
+  }, [boundaryPoints, jitteredMarkers, zones]);
 
   return (
     <View style={[styles.wrap, { height }]}>
@@ -129,12 +143,13 @@ export default function FarmMapView({ boundary, markers = [], zones = [], height
           />
         )}
 
-        {markers.map((m) => (
+        {jitteredMarkers.map((m) => (
           <Marker 
             key={m.id || Math.random().toString()} 
             coordinate={{ latitude: m.latitude, longitude: m.longitude }}
-            pinColor={MARKER_COLOUR[m.state] || colors.primary}
           >
+            {/* Invisible view to hide the teardrop pin but keep the callout clickable */}
+            <View style={{ width: 30, height: 30, backgroundColor: 'transparent' }} />
             <Callout tooltip>
               <View style={styles.callout}>
                 <Text style={styles.calloutTitle}>{m.disease === 'CLEAN' ? 'Healthy Crop' : (m.disease || 'Unknown')}</Text>
