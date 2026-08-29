@@ -93,9 +93,9 @@ export const getTypography = (language) => {
 export const useAppTypography = () => {
   // Try to use i18n hook, fallback to static if not in context
   try {
-    const { useTranslation } = require('react-i18next');
-    const { i18n } = useTranslation();
-    return getTypography(i18n.language);
+    const { useTranslation } = require('../i18n');
+    const { language } = useTranslation();
+    return getTypography(language);
   } catch (e) {
     return typography;
   }

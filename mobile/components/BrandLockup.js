@@ -1,15 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '../i18n';
 import BrandMark from './BrandMark';
 import { tagline, brand, colors, useAppTypography } from '../theme';
 
 export default function BrandLockup({ orientation = 'vertical', size = 80, animated = false }) {
-  const { i18n } = useTranslation();
+  const { language } = useTranslation();
   const typography = useAppTypography();
-  const isTe = i18n.language === 'te';
+  const isTe = language === 'te';
   
-  const currentTagline = tagline[i18n.language] || tagline.en;
+  const currentTagline = tagline[language] || tagline.en;
   
   const displayFont = isTe ? 'NotoSansTelugu_700Bold' : 'RozhaOne_400Regular';
   
