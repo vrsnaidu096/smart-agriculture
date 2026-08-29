@@ -7,22 +7,25 @@ import { useFocusEffect } from '@react-navigation/native';
 import ScreenHeader from '../components/ScreenHeader';
 import Card from '../components/Card';
 import BottomTabBar from '../components/BottomTabBar';
-import { colors, spacing, radius, typography, riskPalette } from '../theme';
+import BrandMark from '../components/BrandMark';
+import BrandLockup from '../components/BrandLockup';
+import { colors, spacing, radius, useAppTypography, riskPalette } from '../theme';
 import { useTranslation, LANGUAGES } from '../i18n';
 import { listFarms } from '../services/api';
 import { getActiveFarmId, setActiveFarmId, getFarmerName } from '../services/storage';
 
-const Row = ({ icon, label, value, onPress, danger }) => (
+const Row = ({ icon, label, value, onPress, danger, typography }) => (
   <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
     <Ionicons name={icon} size={19} color={danger ? colors.risk.HIGH.fg : colors.textSecondary} />
-    <Text style={[styles.rowLabel, danger && { color: colors.risk.HIGH.fg }]}>{label}</Text>
-    {value ? <Text style={styles.rowValue}>{value}</Text> : null}
+    <Text style={[styles.rowLabel, typography.body, danger && { color: colors.risk.HIGH.fg }]}>{label}</Text>
+    {value ? <Text style={[styles.rowValue, typography.bodySecondary]}>{value}</Text> : null}
     {onPress ? <Ionicons name="chevron-forward" size={17} color={colors.textMuted} /> : null}
   </TouchableOpacity>
 );
 
 export default function SettingsScreen({ navigation }) {
   const { t, language, setLanguage } = useTranslation();
+  const typography = useAppTypography();
   const [farms, setFarms] = useState([]);
   const [activeFarm, setActive] = useState(1);
   const [farmerName, setName] = useState(null);
@@ -56,17 +59,15 @@ export default function SettingsScreen({ navigation }) {
 
       <ScrollView contentContainerStyle={styles.content}>
         <Card style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={28} color={colors.primary} />
-          </View>
-          <Text style={styles.profileName}>{farmerName || t('farmer')}</Text>
-          <Text style={styles.profileSub}>{t('tagline')}</Text>
+          <BrandMark size={72} />
+          <Text style={[styles.profileName, typography.subheading]}>{farmerName || t('farmer')}</Text>
+          <Text style={[styles.profileSub, typography.caption]}>{t('tagline')}</Text>
         </Card>
 
         <Card padded={false}>
-          <Text style={styles.groupTitle}>{t('my_farms')}</Text>
+          <Text style={[styles.groupTitle, typography.caption]}>{t('my_farms')}</Text>
           {farms.length === 0 ? (
-            <Text style={styles.emptyFarms}>{t('loading')}</Text>
+            <Text style={[styles.emptyFarms, typography.bodySecondary]}>{t('loading')}</Text>
           ) : (
             farms.map((farm) => (
               <TouchableOpacity
@@ -80,19 +81,20 @@ export default function SettingsScreen({ navigation }) {
                   size={19}
                   color={activeFarm === farm.id ? colors.primary : colors.textMuted}
                 />
-                <Text style={styles.rowLabel}>{farm.name}</Text>
+                <Text style={[styles.rowLabel, typography.body]}>{farm.name}</Text>
               </TouchableOpacity>
             ))
           )}
         </Card>
 
         <Card padded={false}>
-          <Text style={styles.groupTitle}>{t('settings')}</Text>
+          <Text style={[styles.groupTitle, typography.caption]}>{t('settings')}</Text>
           <Row
             icon="language-outline"
             label={t('language')}
             value={currentLanguage?.nativeLabel}
             onPress={() => setShowLanguages((v) => !v)}
+            typography={typography}
           />
           {showLanguages
             ? LANGUAGES.map((option) => (
@@ -107,18 +109,18 @@ export default function SettingsScreen({ navigation }) {
                     size={18}
                     color={language === option.code ? colors.primary : colors.textMuted}
                   />
-                  <Text style={styles.rowLabel}>{option.nativeLabel}</Text>
-                  <Text style={styles.rowValue}>{option.label}</Text>
+                  <Text style={[styles.rowLabel, typography.body]}>{option.nativeLabel}</Text>
+                  <Text style={[styles.rowValue, typography.bodySecondary]}>{option.label}</Text>
                 </TouchableOpacity>
               ))
             : null}
-          <Row icon="map-outline" label={t('farm_map')} onPress={() => navigation.navigate('Map')} />
-          <Row icon="help-circle-outline" label={t('help_support')} />
-          <Row icon="information-circle-outline" label={t('about_us')} />
+          <Row icon="map-outline" label={t('farm_map')} onPress={() => navigation.navigate('Map')} typography={typography} />
+          <Row icon="help-circle-outline" label={t('help_support')} typography={typography} />
+          <Row icon="information-circle-outline" label={t('about_us')} typography={typography} />
         </Card>
 
         <Card>
-          <Text style={styles.groupTitleInline}>{t('risk_guide')}</Text>
+          <Text style={[styles.groupTitleInline, typography.subheading]}>{t('risk_guide')}</Text>
           {riskGuide.map((item) => {
             const palette = riskPalette(item.level);
             return (
@@ -131,11 +133,18 @@ export default function SettingsScreen({ navigation }) {
                   <Text style={[styles.guideLevel, { color: palette.fg }]}>
                     {t(`risk_${item.level.toLowerCase()}`)}
                   </Text>
-                  <Text style={styles.guideText}>{t(item.key)}</Text>
+                  <Text style={[styles.guideText, typography.bodySecondary]}>{t(item.key)}</Text>
                 </View>
               </View>
             );
           })}
+        </Card>
+
+        <Card style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
+          <BrandLockup orientation="vertical" size={80} animated={false} />
+          <Text style={{ marginTop: spacing.md, ...typography.caption, color: colors.textMuted, textAlign: 'center' }}>
+            जय जवान जय किसान — Lal Bahadur Shastri, 1965
+          </Text>
         </Card>
       </ScrollView>
 
@@ -148,27 +157,17 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
   profileCard: { alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xl },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm
-  },
-  profileName: { ...typography.subheading },
-  profileSub: { ...typography.caption },
+  profileName: { },
+  profileSub: { },
   groupTitle: {
-    ...typography.caption,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.sm
   },
-  groupTitleInline: { ...typography.subheading, marginBottom: spacing.md },
-  emptyFarms: { ...typography.bodySecondary, padding: spacing.lg },
+  groupTitleInline: { marginBottom: spacing.md },
+  emptyFarms: { padding: spacing.lg },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -179,8 +178,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border
   },
   subRow: { paddingLeft: spacing.xxl, backgroundColor: colors.surfaceAlt },
-  rowLabel: { ...typography.body, flex: 1 },
-  rowValue: { ...typography.bodySecondary },
+  rowLabel: { flex: 1 },
+  rowValue: { },
   guideRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -192,5 +191,5 @@ const styles = StyleSheet.create({
   },
   guideBody: { flex: 1 },
   guideLevel: { fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
-  guideText: { ...typography.bodySecondary, marginTop: 2, lineHeight: 19 }
+  guideText: { marginTop: 2, lineHeight: 19 }
 });

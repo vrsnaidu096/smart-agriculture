@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { I18nProvider } from './i18n';
+import SplashScreenComponent from './app/splash';
 import HomeScreen from './app/index';
 import ScanScreen from './app/scan';
 import PreviewScreen from './app/preview';
@@ -18,7 +19,27 @@ import SettingsScreen from './app/settings';
 import BoundaryScreen from './app/boundary';
 import LoginScreen from './app/login';
 
+import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, RozhaOne_400Regular } from '@expo-google-fonts/rozha-one';
+import {
+  Mukta_300Light,
+  Mukta_400Regular,
+  Mukta_500Medium,
+  Mukta_600SemiBold,
+  Mukta_700Bold
+} from '@expo-google-fonts/mukta';
+import {
+  NotoSansTelugu_300Light,
+  NotoSansTelugu_400Regular,
+  NotoSansTelugu_500Medium,
+  NotoSansTelugu_600SemiBold,
+  NotoSansTelugu_700Bold
+} from '@expo-google-fonts/noto-sans-telugu';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+// Keep the native splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 
 const Stack = createNativeStackNavigator();
 
@@ -28,6 +49,30 @@ const Stack = createNativeStackNavigator();
  * raised centre camera button possible without a tab navigator.
  */
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    RozhaOne_400Regular,
+    Mukta_300Light,
+    Mukta_400Regular,
+    Mukta_500Medium,
+    Mukta_600SemiBold,
+    Mukta_700Bold,
+    NotoSansTelugu_300Light,
+    NotoSansTelugu_400Regular,
+    NotoSansTelugu_500Medium,
+    NotoSansTelugu_600SemiBold,
+    NotoSansTelugu_700Bold
+  });
+
+  React.useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -35,9 +80,10 @@ export default function App() {
         <StatusBar style="dark" />
         <NavigationContainer>
           <Stack.Navigator
-            initialRouteName="Login"
+            initialRouteName="Splash"
             screenOptions={{ headerShown: false, animation: 'fade' }}
           >
+            <Stack.Screen name="Splash" component={SplashScreenComponent} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Scan" component={ScanScreen} />

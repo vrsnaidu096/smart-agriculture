@@ -15,7 +15,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0C1426",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -34,7 +34,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1B7A3E"
+      "backgroundColor": "#0C1426"
     },
     "plugins": [
       [
@@ -48,7 +48,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Smart Agriculture to use your location to map scans and fetch local soil and weather data."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

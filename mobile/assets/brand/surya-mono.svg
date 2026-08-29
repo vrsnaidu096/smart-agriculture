@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="Surya Kshetra monochrome">
+  <defs>
+    <clipPath id="disc"><circle cx="100" cy="100" r="94"/></clipPath>
+    <g id="rayM"><polygon points="100,4 108,48 92,48" fill="#FFFFFF"/></g>
+  </defs>
+  <g clip-path="url(#disc)">
+    <use href="#rayM" transform="rotate(0 100 76)"/><use href="#rayM" transform="rotate(45 100 76)"/>
+    <use href="#rayM" transform="rotate(90 100 76)"/><use href="#rayM" transform="rotate(135 100 76)"/>
+    <use href="#rayM" transform="rotate(180 100 76)"/><use href="#rayM" transform="rotate(225 100 76)"/>
+    <use href="#rayM" transform="rotate(270 100 76)"/><use href="#rayM" transform="rotate(315 100 76)"/>
+    <circle cx="100" cy="76" r="37" fill="#FFFFFF"/>
+    <path d="M-10 210 Q 100 96 210 210 Z" fill="#FFFFFF"/>
+  </g>
+</svg>
