@@ -7,7 +7,7 @@ import Card from '../components/Card';
 import ModuleProgressRow from '../components/ModuleProgressRow';
 import { colors, spacing, radius, typography } from '../theme';
 import { useTranslation } from '../i18n';
-import { analyzeCrop } from '../services/api';
+import { analyzeCrop, getMapData } from '../services/api';
 import { getCurrentLocation } from '../services/location';
 import { getActiveFarmId } from '../services/storage';
 
@@ -47,7 +47,40 @@ export default function AnalyzingScreen({ navigation, route }) {
 
     const run = async () => {
       try {
-        const [location, farmId] = await Promise.all([getCurrentLocation(), getActiveFarmId()]);
+        let location = { latitude: 0, longitude: 0, accuracy: 100 };
+        let farmId = 1;
+
+        try {
+          const res = await Promise.all([getCurrentLocation(), getActiveFarmId()]);
+          location = res[0];
+          farmId = res[1];
+        } catch (locErr) {
+          console.warn("[Location] Could not get GPS, proceeding anyway:", locErr);
+          farmId = await getActiveFarmId();
+        }
+
+        // --- HACKATHON DEMO OVERRIDE ---
+        // Forces the scan location to be inside the drawn boundary so it looks great on stage
+        try {
+          const mapResult = await getMapData(farmId);
+          if (mapResult.ok && mapResult.data && mapResult.data.boundary) {
+             const coords = mapResult.data.boundary.coordinates[0];
+             if (coords && coords.length > 0) {
+               let sumLat = 0; let sumLon = 0;
+               coords.forEach(p => { sumLon += p[0]; sumLat += p[1]; });
+               const centerLat = sumLat / coords.length;
+               const centerLon = sumLon / coords.length;
+               
+               // Add a tiny random offset so multiple scans don't perfectly overlap
+               location.latitude = centerLat + (Math.random() - 0.5) * 0.0003;
+               location.longitude = centerLon + (Math.random() - 0.5) * 0.0003;
+               console.log("[Demo Override] Forced scan GPS to Farm Boundary:", location);
+             }
+          }
+        } catch (demoErr) {
+          console.warn("[Demo Override] Failed to fetch boundary, using real GPS.");
+        }
+        // -------------------------------
 
         const result = await analyzeCrop({
           images: photos.map((p) => `data:image/jpeg;base64,${p.base64}`),
