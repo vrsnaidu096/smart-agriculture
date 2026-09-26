@@ -7,7 +7,7 @@ import Constants from 'expo-constants';
  * The base URL comes from app.json -> expo.extra.apiBaseUrl so it is not
  */
 
-const FALLBACK_URL = 'https://okiyn-106-78-88-2.free.pinggy.net/api';
+const FALLBACK_URL = 'https://cesxa-2405-201-c04a-b0aa-fd22-ce71-fbbb-3e2c.free.pinggy.net/api';
 
 export const API_BASE_URL =
   Constants.expoConfig?.extra?.apiBaseUrl ||
